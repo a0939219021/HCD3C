@@ -4,9 +4,9 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
+# build/  # 保留 build 目录以便查看编译过程
 develop-eggs/
-dist/
+# dist/  # 保留 dist 目录以便分享编译好的 exe 文件
 downloads/
 eggs/
 .eggs/
