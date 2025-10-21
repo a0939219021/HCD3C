@@ -175,9 +175,13 @@ class HCD3ColdHotCalculator:
     
     def create_scrollable_frame(self):
         """RWD: 创建带滚动条的可滚动容器"""
+        # 创建主容器框架
+        container = tk.Frame(self.root, bg=self.colors['bg'])
+        container.pack(fill="both", expand=True)
+        
         # 创建画布和滚动条
-        self.canvas = tk.Canvas(self.root, bg=self.colors['bg'], highlightthickness=0)
-        self.scrollbar = tk.Scrollbar(self.root, orient="vertical", command=self.canvas.yview)
+        self.canvas = tk.Canvas(container, bg=self.colors['bg'], highlightthickness=0)
+        self.scrollbar = tk.Scrollbar(container, orient="vertical", command=self.canvas.yview)
         
         # 创建内部框架
         self.scrollable_frame = tk.Frame(self.canvas, bg=self.colors['bg'])
@@ -189,15 +193,23 @@ class HCD3ColdHotCalculator:
         )
         
         # 在画布上创建窗口
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         
         # 布局
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
         
+        # RWD: 确保内容填充整个 Canvas 宽度
+        self.canvas.bind('<Configure>', self._on_canvas_configure)
+        
         # 鼠标滚轮支持
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+    
+    def _on_canvas_configure(self, event):
+        """RWD: Canvas 大小变化时，调整内部框架宽度"""
+        canvas_width = event.width
+        self.canvas.itemconfig(self.canvas_window, width=canvas_width)
     
     def _on_mousewheel(self, event):
         """RWD: 处理鼠标滚轮事件"""
@@ -233,7 +245,7 @@ class HCD3ColdHotCalculator:
         
     def create_widgets(self):
         # RWD: 使用可滚动的容器而不是固定的frame
-        padding = self.get_responsive_padding(20)
+        padding = self.get_responsive_padding(10)  # 从20减少到10，更紧密
         main_container = tk.Frame(self.scrollable_frame, bg=self.colors['bg'])
         main_container.pack(fill='both', expand=True, padx=padding, pady=padding)
         
@@ -247,7 +259,7 @@ class HCD3ColdHotCalculator:
         
     def create_header(self, parent):
         header_frame = tk.Frame(parent, bg=self.colors['bg'])
-        header_frame.pack(fill='x', pady=(0, 20))
+        header_frame.pack(fill='x', pady=(0, 10))  # 从20减少到10
         
         # RWD: 响应式标题字体
         title_font_size = self.get_responsive_font_size(18)
@@ -287,7 +299,7 @@ class HCD3ColdHotCalculator:
     def create_input_section(self, parent):
         # RWD: 响应式字体
         frame_font = self.get_responsive_font_size(12)
-        padding = self.get_responsive_padding(20)
+        padding = self.get_responsive_padding(15)  # 从20减少到15
         
         self.input_frame = tk.LabelFrame(
             parent,
@@ -298,9 +310,9 @@ class HCD3ColdHotCalculator:
             relief='solid',
             borderwidth=1,
             padx=padding,
-            pady=15
+            pady=10  # 从15减少到10
         )
-        self.input_frame.pack(fill='x', pady=(0, 15))
+        self.input_frame.pack(fill='x', pady=(0, 10))  # 从15减少到10
         
         # 冰温热型输入字段
         fields = [
@@ -319,7 +331,7 @@ class HCD3ColdHotCalculator:
     def add_input_field(self, key, label_text, default_value):
         # RWD: 使用grid布局代替固定宽度
         frame = tk.Frame(self.input_frame, bg=self.colors['frame_bg'])
-        frame.pack(fill='x', pady=8, padx=10)
+        frame.pack(fill='x', pady=5, padx=5)  # 从pady=8,padx=10减少到5,5
         
         # RWD: 配置grid权重，让组件自动伸缩
         frame.grid_columnconfigure(0, weight=2)  # 标签占2份
@@ -349,14 +361,14 @@ class HCD3ColdHotCalculator:
     
     def create_button_section(self, parent):
         btn_frame = tk.Frame(parent, bg=self.colors['bg'])
-        btn_frame.pack(fill='x', pady=(0, 15))
+        btn_frame.pack(fill='x', pady=(0, 10))  # 从15减少到10
         
         lang = LANGUAGES[self.current_lang]
         
         # RWD: 响应式按钮字体和内边距
         btn_font = self.get_responsive_font_size(12)
-        btn_padx = self.get_responsive_padding(30)
-        btn_pady = self.get_responsive_padding(10)
+        btn_padx = self.get_responsive_padding(20)  # 从30减少到20
+        btn_pady = self.get_responsive_padding(8)   # 从10减少到8
         
         self.calc_btn = tk.Button(
             btn_frame,
@@ -391,7 +403,7 @@ class HCD3ColdHotCalculator:
         
         # RWD: 响应式字体和内边距
         frame_font = self.get_responsive_font_size(12)
-        padding = self.get_responsive_padding(20)
+        padding = self.get_responsive_padding(15)  # 从20减少到15
         
         self.result_frame = tk.LabelFrame(
             parent,
@@ -402,7 +414,7 @@ class HCD3ColdHotCalculator:
             relief='solid',
             borderwidth=1,
             padx=padding,
-            pady=15
+            pady=10  # 从15减少到10
         )
         self.result_frame.pack(fill='both', expand=True)
     
@@ -467,7 +479,7 @@ class HCD3ColdHotCalculator:
             font=('Arial', 12, 'bold'),
             bg=self.colors['frame_bg']
         )
-        threshold_label.pack(anchor='w', pady=(0, 15))
+        threshold_label.pack(anchor='w', pady=(0, 8))  # 从15减少到8
         
         # 显示各等级
         for grade in [1, 2, 3, 4, 5]:
@@ -479,7 +491,7 @@ class HCD3ColdHotCalculator:
     def add_result_row(self, label_text, value_text, bold=False):
         # RWD: 使用grid布局代替固定宽度
         frame = tk.Frame(self.result_frame, bg=self.colors['frame_bg'])
-        frame.pack(fill='x', pady=6, padx=10)
+        frame.pack(fill='x', pady=3, padx=5)  # 从pady=6,padx=10减少到3,5
         
         # RWD: 配置grid权重
         frame.grid_columnconfigure(0, weight=1)
@@ -508,7 +520,7 @@ class HCD3ColdHotCalculator:
     
     def add_separator(self):
         separator = tk.Frame(self.result_frame, height=2, bg='#e5e7eb')
-        separator.pack(fill='x', pady=15)
+        separator.pack(fill='x', pady=8)  # 从15减少到8
     
     def display_grade_row(self, grade, result):
         lang = LANGUAGES[self.current_lang]
@@ -518,7 +530,7 @@ class HCD3ColdHotCalculator:
         
         # RWD: 使用grid布局
         frame = tk.Frame(self.result_frame, bg=self.colors['frame_bg'])
-        frame.pack(fill='x', pady=5, padx=10)
+        frame.pack(fill='x', pady=3, padx=5)  # 从pady=5,padx=10减少到3,5
         
         # RWD: 配置grid权重
         frame.grid_columnconfigure(0, weight=2)
@@ -564,7 +576,7 @@ class HCD3ColdHotCalculator:
         self.add_separator()
         
         final_frame = tk.Frame(self.result_frame, bg='#f9fafb', relief='solid', borderwidth=2)
-        final_frame.pack(fill='x', pady=15, padx=10)
+        final_frame.pack(fill='x', pady=8, padx=5)  # 从pady=15,padx=10减少到8,5
         
         # RWD: 响应式字体大小
         title_font = self.get_responsive_font_size(14)
@@ -578,7 +590,7 @@ class HCD3ColdHotCalculator:
             font=('Arial', title_font, 'bold'),
             bg='#f9fafb'
         )
-        grade_label.pack(pady=(15, 10))
+        grade_label.pack(pady=(10, 5))  # 从(15,10)减少到(10,5)
         
         if result['grade'] is not None:
             grade = result['grade']
@@ -591,7 +603,7 @@ class HCD3ColdHotCalculator:
                 bg='#f9fafb',
                 fg=color
             )
-            grade_value.pack(pady=10)
+            grade_value.pack(pady=5)  # 从10减少到5
             
             grade_desc = tk.Label(
                 final_frame,
@@ -600,7 +612,7 @@ class HCD3ColdHotCalculator:
                 bg='#f9fafb',
                 fg=color
             )
-            grade_desc.pack(pady=(0, 15))
+            grade_desc.pack(pady=(0, 10))  # 从(0,15)减少到(0,10)
         else:
             fail_label = tk.Label(
                 final_frame,
@@ -609,7 +621,7 @@ class HCD3ColdHotCalculator:
                 bg='#f9fafb',
                 fg=self.colors['danger']
             )
-            fail_label.pack(pady=20)
+            fail_label.pack(pady=10)  # 从20减少到10
             
             # 显示超出数值
             exceed = result['E24_kWh'] - result['E_standard_kWh']
@@ -620,7 +632,7 @@ class HCD3ColdHotCalculator:
                 bg='#f9fafb',
                 fg=self.colors['danger']
             )
-            exceed_label.pack(pady=(0, 15))
+            exceed_label.pack(pady=(0, 10))  # 从(0,15)减少到(0,10)
     
     def clear_inputs(self):
         for key, widget_dict in self.entries.items():
