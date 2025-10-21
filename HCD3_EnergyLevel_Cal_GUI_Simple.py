@@ -124,8 +124,29 @@ class HCD3ColdHotCalculator:
         self.current_lang = 'zh'
         
         self.root.title(LANGUAGES[self.current_lang]['title'])
-        self.root.geometry("1000x1000")
+        
+        # RWD: 获取屏幕尺寸并设置初始窗口大小为屏幕的70%
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        window_width = int(screen_width * 0.7)
+        window_height = int(screen_height * 0.7)
+        
+        # 设置最小窗口尺寸
+        min_width = 800
+        min_height = 700
+        self.root.minsize(min_width, min_height)
+        
+        # 居中显示窗口
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
         self.root.resizable(True, True)
+        
+        # RWD: 保存当前窗口尺寸，用于计算缩放比例
+        self.current_width = window_width
+        self.current_height = window_height
+        self.base_width = 1000  # 基准宽度
+        self.base_height = 900  # 基准高度
         
         # 配色
         self.colors = {
@@ -144,11 +165,80 @@ class HCD3ColdHotCalculator:
         }
         
         self.root.configure(bg=self.colors['bg'])
+        
+        # RWD: 创建带滚动条的主容器
+        self.create_scrollable_frame()
         self.create_widgets()
         
+        # RWD: 监听窗口大小变化
+        self.root.bind('<Configure>', self.on_window_resize)
+    
+    def create_scrollable_frame(self):
+        """RWD: 创建带滚动条的可滚动容器"""
+        # 创建画布和滚动条
+        self.canvas = tk.Canvas(self.root, bg=self.colors['bg'], highlightthickness=0)
+        self.scrollbar = tk.Scrollbar(self.root, orient="vertical", command=self.canvas.yview)
+        
+        # 创建内部框架
+        self.scrollable_frame = tk.Frame(self.canvas, bg=self.colors['bg'])
+        
+        # 配置滚动区域
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+        
+        # 在画布上创建窗口
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        
+        # 布局
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+        
+        # 鼠标滚轮支持
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+    
+    def _on_mousewheel(self, event):
+        """RWD: 处理鼠标滚轮事件"""
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    
+    def on_window_resize(self, event):
+        """RWD: 响应窗口大小变化"""
+        # 只处理根窗口的resize事件，避免处理子组件的事件
+        if event.widget == self.root:
+            new_width = event.width
+            new_height = event.height
+            
+            # 防止频繁更新（只在尺寸变化超过50像素时更新）
+            if abs(new_width - self.current_width) > 50 or abs(new_height - self.current_height) > 50:
+                self.current_width = new_width
+                self.current_height = new_height
+                # 可以在这里添加字体大小调整等响应式操作
+    
+    def get_responsive_font_size(self, base_size):
+        """RWD: 根据窗口大小计算响应式字体大小"""
+        scale_factor = min(self.current_width / self.base_width, 
+                          self.current_height / self.base_height)
+        # 限制缩放范围在0.8到1.2之间
+        scale_factor = max(0.8, min(1.2, scale_factor))
+        return int(base_size * scale_factor)
+    
+    def get_responsive_padding(self, base_padding):
+        """RWD: 根据窗口大小计算响应式内边距"""
+        scale_factor = min(self.current_width / self.base_width, 
+                          self.current_height / self.base_height)
+        scale_factor = max(0.8, min(1.2, scale_factor))
+        return int(base_padding * scale_factor)
+        
     def create_widgets(self):
-        main_container = tk.Frame(self.root, bg=self.colors['bg'])
-        main_container.pack(fill='both', expand=True, padx=20, pady=20)
+        # RWD: 使用可滚动的容器而不是固定的frame
+        padding = self.get_responsive_padding(20)
+        main_container = tk.Frame(self.scrollable_frame, bg=self.colors['bg'])
+        main_container.pack(fill='both', expand=True, padx=padding, pady=padding)
+        
+        # RWD: 使用grid布局以获得更好的响应式效果
+        main_container.grid_columnconfigure(0, weight=1)
         
         self.create_header(main_container)
         self.create_input_section(main_container)
@@ -159,10 +249,14 @@ class HCD3ColdHotCalculator:
         header_frame = tk.Frame(parent, bg=self.colors['bg'])
         header_frame.pack(fill='x', pady=(0, 20))
         
+        # RWD: 响应式标题字体
+        title_font_size = self.get_responsive_font_size(18)
+        label_font_size = self.get_responsive_font_size(10)
+        
         self.title_label = tk.Label(
             header_frame,
             text=LANGUAGES[self.current_lang]['title'],
-            font=('Arial', 18, 'bold'),
+            font=('Arial', title_font_size, 'bold'),
             bg=self.colors['bg'],
             fg=self.colors['primary']
         )
@@ -174,7 +268,7 @@ class HCD3ColdHotCalculator:
         self.lang_label = tk.Label(
             lang_frame,
             text=LANGUAGES[self.current_lang]['lang_label'],
-            font=('Arial', 10),
+            font=('Arial', label_font_size),
             bg=self.colors['bg']
         )
         self.lang_label.pack(side='left', padx=(0, 5))
@@ -191,15 +285,19 @@ class HCD3ColdHotCalculator:
         lang_combo.bind('<<ComboboxSelected>>', self.change_language)
     
     def create_input_section(self, parent):
+        # RWD: 响应式字体
+        frame_font = self.get_responsive_font_size(12)
+        padding = self.get_responsive_padding(20)
+        
         self.input_frame = tk.LabelFrame(
             parent,
             text=LANGUAGES[self.current_lang]['input_frame'],
-            font=('Arial', 12, 'bold'),
+            font=('Arial', frame_font, 'bold'),
             bg=self.colors['frame_bg'],
             fg=self.colors['text'],
             relief='solid',
             borderwidth=1,
-            padx=20,
+            padx=padding,
             pady=15
         )
         self.input_frame.pack(fill='x', pady=(0, 15))
@@ -219,27 +317,32 @@ class HCD3ColdHotCalculator:
             self.add_input_field(key, LANGUAGES[self.current_lang][label_key], default)
     
     def add_input_field(self, key, label_text, default_value):
+        # RWD: 使用grid布局代替固定宽度
         frame = tk.Frame(self.input_frame, bg=self.colors['frame_bg'])
-        frame.pack(fill='x', pady=8)
+        frame.pack(fill='x', pady=8, padx=10)
+        
+        # RWD: 配置grid权重，让组件自动伸缩
+        frame.grid_columnconfigure(0, weight=2)  # 标签占2份
+        frame.grid_columnconfigure(1, weight=1)  # 输入框占1份
+        
+        font_size = self.get_responsive_font_size(11)
         
         label = tk.Label(
             frame,
             text=label_text,
-            font=('Arial', 11),
+            font=('Arial', font_size),
             bg=self.colors['frame_bg'],
-            width=35,
             anchor='w'
         )
-        label.pack(side='left')
+        label.grid(row=0, column=0, sticky='w', padx=(0, 10))
         
         entry = tk.Entry(
             frame,
-            font=('Arial', 11),
-            width=25,
+            font=('Arial', font_size),
             relief='solid',
             borderwidth=1
         )
-        entry.pack(side='right')
+        entry.grid(row=0, column=1, sticky='ew')
         entry.insert(0, default_value)
         
         self.entries[key] = {'entry': entry, 'label': label}
@@ -250,15 +353,20 @@ class HCD3ColdHotCalculator:
         
         lang = LANGUAGES[self.current_lang]
         
+        # RWD: 响应式按钮字体和内边距
+        btn_font = self.get_responsive_font_size(12)
+        btn_padx = self.get_responsive_padding(30)
+        btn_pady = self.get_responsive_padding(10)
+        
         self.calc_btn = tk.Button(
             btn_frame,
             text=lang['calculate_btn'],
-            font=('Arial', 12, 'bold'),
+            font=('Arial', btn_font, 'bold'),
             bg=self.colors['primary'],
             fg='white',
             relief='flat',
-            padx=30,
-            pady=10,
+            padx=btn_padx,
+            pady=btn_pady,
             cursor='hand2',
             command=self.calculate
         )
@@ -267,12 +375,12 @@ class HCD3ColdHotCalculator:
         self.clear_btn = tk.Button(
             btn_frame,
             text=lang['clear_btn'],
-            font=('Arial', 12),
+            font=('Arial', btn_font),
             bg='#6b7280',
             fg='white',
             relief='flat',
-            padx=30,
-            pady=10,
+            padx=btn_padx,
+            pady=btn_pady,
             cursor='hand2',
             command=self.clear_inputs
         )
@@ -280,15 +388,20 @@ class HCD3ColdHotCalculator:
     
     def create_result_section(self, parent):
         lang = LANGUAGES[self.current_lang]
+        
+        # RWD: 响应式字体和内边距
+        frame_font = self.get_responsive_font_size(12)
+        padding = self.get_responsive_padding(20)
+        
         self.result_frame = tk.LabelFrame(
             parent,
             text=lang['result_frame'],
-            font=('Arial', 12, 'bold'),
+            font=('Arial', frame_font, 'bold'),
             bg=self.colors['frame_bg'],
             fg=self.colors['text'],
             relief='solid',
             borderwidth=1,
-            padx=20,
+            padx=padding,
             pady=15
         )
         self.result_frame.pack(fill='both', expand=True)
@@ -364,29 +477,34 @@ class HCD3ColdHotCalculator:
         self.display_final_grade(result)
     
     def add_result_row(self, label_text, value_text, bold=False):
+        # RWD: 使用grid布局代替固定宽度
         frame = tk.Frame(self.result_frame, bg=self.colors['frame_bg'])
-        frame.pack(fill='x', pady=6)
+        frame.pack(fill='x', pady=6, padx=10)
+        
+        # RWD: 配置grid权重
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_columnconfigure(1, weight=0)
         
         font_weight = 'bold' if bold else 'normal'
+        font_size = self.get_responsive_font_size(11)
         
         label = tk.Label(
             frame,
             text=label_text,
-            font=('Arial', 11, font_weight),
+            font=('Arial', font_size, font_weight),
             bg=self.colors['frame_bg'],
-            width=40,
             anchor='w'
         )
-        label.pack(side='left')
+        label.grid(row=0, column=0, sticky='w')
         
         value = tk.Label(
             frame,
             text=value_text,
-            font=('Arial', 11, font_weight),
+            font=('Arial', font_size, font_weight),
             bg=self.colors['frame_bg'],
             fg=self.colors['primary']
         )
-        value.pack(side='right')
+        value.grid(row=0, column=1, sticky='e', padx=(10, 0))
     
     def add_separator(self):
         separator = tk.Frame(self.result_frame, height=2, bg='#e5e7eb')
@@ -398,30 +516,35 @@ class HCD3ColdHotCalculator:
         E24_value = result['E24_kWh']
         passed = E24_value <= threshold
         
+        # RWD: 使用grid布局
         frame = tk.Frame(self.result_frame, bg=self.colors['frame_bg'])
-        frame.pack(fill='x', pady=5)
+        frame.pack(fill='x', pady=5, padx=10)
+        
+        # RWD: 配置grid权重
+        frame.grid_columnconfigure(0, weight=2)
+        frame.grid_columnconfigure(1, weight=2)
+        frame.grid_columnconfigure(2, weight=1)
         
         color = self.colors[f'grade_{grade}']
+        font_size = self.get_responsive_font_size(11)
         
         grade_label = tk.Label(
             frame,
             text=lang[f'grade_{grade}'],
-            font=('Arial', 11),
+            font=('Arial', font_size),
             bg=self.colors['frame_bg'],
             fg=color,
-            width=30,
             anchor='w'
         )
-        grade_label.pack(side='left')
+        grade_label.grid(row=0, column=0, sticky='w')
         
         threshold_label = tk.Label(
             frame,
             text=f"≤ {threshold:.3f} {lang['kWh_unit']}",
-            font=('Arial', 11),
-            bg=self.colors['frame_bg'],
-            width=25
+            font=('Arial', font_size),
+            bg=self.colors['frame_bg']
         )
-        threshold_label.pack(side='left')
+        threshold_label.grid(row=0, column=1, sticky='w', padx=(10, 0))
         
         status_text = lang['pass'] if passed else lang['fail']
         status_color = self.colors['success'] if passed else '#9ca3af'
@@ -429,11 +552,11 @@ class HCD3ColdHotCalculator:
         status_label = tk.Label(
             frame,
             text=status_text,
-            font=('Arial', 11, 'bold'),
+            font=('Arial', font_size, 'bold'),
             bg=self.colors['frame_bg'],
             fg=status_color
         )
-        status_label.pack(side='right')
+        status_label.grid(row=0, column=2, sticky='e')
     
     def display_final_grade(self, result):
         lang = LANGUAGES[self.current_lang]
@@ -443,10 +566,16 @@ class HCD3ColdHotCalculator:
         final_frame = tk.Frame(self.result_frame, bg='#f9fafb', relief='solid', borderwidth=2)
         final_frame.pack(fill='x', pady=15, padx=10)
         
+        # RWD: 响应式字体大小
+        title_font = self.get_responsive_font_size(14)
+        large_font = self.get_responsive_font_size(48)
+        medium_font = self.get_responsive_font_size(36)
+        small_font = self.get_responsive_font_size(12)
+        
         grade_label = tk.Label(
             final_frame,
             text=lang['grade_label'],
-            font=('Arial', 14, 'bold'),
+            font=('Arial', title_font, 'bold'),
             bg='#f9fafb'
         )
         grade_label.pack(pady=(15, 10))
@@ -458,7 +587,7 @@ class HCD3ColdHotCalculator:
             grade_value = tk.Label(
                 final_frame,
                 text=str(grade),
-                font=('Arial', 48, 'bold'),
+                font=('Arial', large_font, 'bold'),
                 bg='#f9fafb',
                 fg=color
             )
@@ -467,7 +596,7 @@ class HCD3ColdHotCalculator:
             grade_desc = tk.Label(
                 final_frame,
                 text=lang[f'grade_{grade}'],
-                font=('Arial', 14),
+                font=('Arial', title_font),
                 bg='#f9fafb',
                 fg=color
             )
@@ -476,7 +605,7 @@ class HCD3ColdHotCalculator:
             fail_label = tk.Label(
                 final_frame,
                 text=lang['not_qualified'],
-                font=('Arial', 36, 'bold'),
+                font=('Arial', medium_font, 'bold'),
                 bg='#f9fafb',
                 fg=self.colors['danger']
             )
@@ -487,7 +616,7 @@ class HCD3ColdHotCalculator:
             exceed_label = tk.Label(
                 final_frame,
                 text=f"{lang['E_standard_label']} +{exceed:.3f} {lang['kWh_unit']} ({exceed/result['E_standard_kWh']*100:.1f}%)",
-                font=('Arial', 12),
+                font=('Arial', small_font),
                 bg='#f9fafb',
                 fg=self.colors['danger']
             )
@@ -505,7 +634,8 @@ class HCD3ColdHotCalculator:
         selected = self.lang_var.get()
         self.current_lang = lang_map[selected]
         
-        for widget in self.root.winfo_children():
+        # RWD: 清除滚动框架内的内容而不是root
+        for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
         
         self.create_widgets()
